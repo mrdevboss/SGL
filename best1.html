@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGL Lottery DApp</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e, #162447);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      width: 90%;
+      max-width: 420px;
+      margin-top: 30px;
+      text-align: center;
+      background: rgba(255,255,255,0.05);
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    }
+      @keyframes heartbeat {
+      0%   { transform: scale(1); }
+      25%  { transform: scale(1.15); }
+      40%  { transform: scale(1); }
+      60%  { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+    .logo {
+      width: 100px;
+      margin: 0 auto 15px auto;
+      display: block;
+      transition: transform 0.3s;
+      cursor: pointer;
+        animation: heartbeat 1.5s infinite;
+    }
+    .logo:hover {
+      transform: scale(1.1);
+    }
+    h1 {
+      font-size: 26px;
+      margin-bottom: 15px;
+      color: #ffd700;
+    }
+    h3 {
+      margin-top: 20px;
+      margin-bottom: 10px;
+      font-size: 20px;
+      color: #56ffa6;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 12px;
+      border: none;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 16px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    input::placeholder { color: #ddd; }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 12px;
+      border: none;
+      background: #ff4d6d;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover { background: #ff1e3c; }
+    button:disabled { background: #666; cursor: not-allowed; }
+    p { margin: 8px 0; }
+    #status { color: #56ffa6; margin-top: 10px; }
+    .info-box {
+      background: rgba(255,255,255,0.08);
+      padding: 10px;
+      border-radius: 10px;
+      margin: 10px 0;
+      text-align: left;
+      font-size: 14px;
+    }
+    @media (max-width: 600px) {
+      h1 { font-size: 22px; }
+      input, button { font-size: 16px; padding: 10px; }
+      .logo { width: 80px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Logo as Button -->
+    <img src="SPLOTTERY.png" alt="SGL Logo" class="logo" onclick="goToMembers()">
+
+    <h1>𝐒𝐈𝐍𝐆𝐀𝐏𝐎𝐑𝐄 𝐋𝐎𝐓𝐓𝐄𝐑𝐘</h1>
+    <button onclick="connectWallet()">𝙲𝙾𝙽𝙽𝙴𝙲𝚃 𝚆𝙰𝙻𝙻𝙴𝚃</button>
+    <p id="status">Not connected</p>
+
+    <div id="userPanel" style="display:none;">
+      <div class="info-box">
+        <p><b>Wallet:</b> <span id="userAddress"></span></p>
+        <p><b>User ID:</b> <span id="userID">-</span></p>
+        <p><b>Token Balance:</b> <span id="tokenBalance">0</span> SGT</p>
+      </div>
+
+      <h3>Join Lottery</h3>
+      <input type="number" id="refID" placeholder="Enter Referrer ID (default 1000)">
+      <button onclick="joinLottery()">𝐉𝐎𝐈𝐍 𝐍𝐎𝐖 (15 𝐏𝐎𝐋)</button>
+    </div>
+  </div>
+
+  <script>
+    // Redirect function for Logo Button
+    function goToMembers() {
+      window.location.href = "connect.html"; 
+    }
+
+    const CONTRACT_ADDRESS = "0x2a02E4E136E7BB2F692C95CeeBbe903213aeE54e"; 
+    const REWARD_TOKEN = "0xFEF338fB8B658FF1C564407322b2237D0FbDf260";      
+
+    const CONTRACT_ABI = [
+      "function join(uint256 refID) external payable",
+      "function userIDs(address) view returns (uint256)"
+    ];
+
+    const TOKEN_ABI = [
+      "function balanceOf(address) view returns (uint256)"
+    ];
+
+      let provider, signer, contract, token, userAddress;
+
+    async function connectWallet() {
+      if (window.ethereum) {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        userAddress = await signer.getAddress();
+
+        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+        token = new ethers.Contract(REWARD_TOKEN, TOKEN_ABI, signer);
+
+        document.getElementById("status").innerText = "✅ Connected: " + userAddress.slice(0,6) + "..." + userAddress.slice(-4);
+        document.getElementById("userPanel").style.display = "block";
+        document.getElementById("userAddress").innerText = userAddress;loadUserInfo();
+      } else {
+        alert("Please install MetaMask!");
+      }
+    }
+
+    async function loadUserInfo() {
+      try {
+        const id = await contract.userIDs(userAddress);
+        document.getElementById("userID").innerText = id.toString();
+
+        const bal = await token.balanceOf(userAddress);
+        document.getElementById("tokenBalance").innerText = ethers.utils.formatUnits(bal, 18);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function joinLottery() {
+      try {
+        const ref = document.getElementById("refID").value || 1000;
+        const tx = await contract.join(ref, { value: ethers.utils.parseEther("15") });
+        await tx.wait();
+        alert("✅ Successfully Joined!");
+        loadUserInfo();
+      } catch (err) {
+        alert("❌ Error: " + err.message);
+      }
+    } 
+  </script>
+</body>
+</html>
